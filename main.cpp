@@ -11,23 +11,19 @@
 
 struct vertice {
   unsigned int value;
-  unsigned int f; // Precisamos disto?? Ja vamos ter a orderedFinishTime
   int color;
   int sccID;
 };
 
 
-std::stack<vertice*> dfs(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack, unsigned int V){
+std::stack<vertice*> DFS(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack){
   std::stack<vertice*> orderedByFinishTime;
-
-  unsigned int time = 0;
   
   while(!stack.empty()){
     struct vertice *v = stack.top();
     
     if(v->color == WHITE){
       v->color = GREY;
-      time++;
 
       for(unsigned int adjValue : graph[v->value]){
         if(vertices[adjValue].color == WHITE)
@@ -38,7 +34,6 @@ std::stack<vertice*> dfs(std::list<int> *graph, std::vector<vertice> &vertices, 
       stack.pop();
       
       v->color = BLACK;
-      v->f = ++time;
       
       orderedByFinishTime.push(v);
     }
@@ -48,6 +43,39 @@ std::stack<vertice*> dfs(std::list<int> *graph, std::vector<vertice> &vertices, 
   }
 
   return orderedByFinishTime;
+}
+
+
+void calculateSCCs(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack){
+  int scc = 1;
+  int verticesInSCC = 0;
+
+  while(!stack.empty()){
+    struct vertice *v = stack.top();
+    
+    if(v->color == WHITE){
+      v->color = GREY;
+
+      v->sccID = scc;
+      verticesInSCC++;
+
+      for(unsigned int adjValue : graph[v->value]){
+        if(vertices[adjValue].color == WHITE)
+          stack.push(&vertices[adjValue]);
+      }
+    }
+    else if(v->color == GREY){
+      stack.pop();
+      
+      v->color = BLACK;
+
+      if(--verticesInSCC == 0)
+        scc++;
+    }
+    else{
+      stack.pop();
+    }
+  }
 }
 
 
@@ -84,12 +112,18 @@ int main(){
     stack.push(&vertices[i]);
   }
 
-  // Do first DFS
-  std::stack<vertice*> orderedByFinishTime = dfs(graph, vertices, stack, V);
+  // First DFS
+  std::stack<vertice*> orderedByFinishTime = DFS(graph, vertices, stack);
 
-  while(!orderedByFinishTime.empty()){
-    std::cout << orderedByFinishTime.top()->value << '\n';
-    orderedByFinishTime.pop();
+  // Reset vertices color to white
+  for(unsigned i = 1; i <= V; i++) 
+    vertices[i].color = WHITE;
+  
+  // Second DFS
+  calculateSCCs(transpostGraph, vertices, orderedByFinishTime);
+
+  for(vertice v : vertices){
+    std::cout << v.value << ' ' << v.sccID << '\n';
   }
 
   return 0;
