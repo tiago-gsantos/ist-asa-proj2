@@ -2,8 +2,7 @@
 #include <list>
 #include <vector>
 #include <stack>
-#include <thread>
-#include <chrono>
+#include <cmath>
 
 #define WHITE (0)
 #define GREY (1)
@@ -14,7 +13,6 @@ struct vertice {
   int color;
   int sccID;
 };
-
 
 std::stack<vertice*> DFS(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack){
   std::stack<vertice*> orderedByFinishTime;
@@ -46,7 +44,7 @@ std::stack<vertice*> DFS(std::list<int> *graph, std::vector<vertice> &vertices, 
 }
 
 
-void calculateSCCs(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack){
+int calculateSCCs(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack){
   int scc = 1;
   int verticesInSCC = 0;
 
@@ -76,6 +74,28 @@ void calculateSCCs(std::list<int> *graph, std::vector<vertice> &vertices, std::s
       stack.pop();
     }
   }
+  return scc-1;
+}
+
+
+int calculateMaxJumps(std::list<int> *graph, std::vector<vertice> &vertices, std::stack<vertice*> &stack, int numSCC){
+  std::vector<int> sccJumps(numSCC + 1, 0);
+  int maxJumps = 0;
+  
+  while(!stack.empty()){
+    struct vertice *v = stack.top();
+    stack.pop();
+
+    for(int adjVertice : graph[v->value]){
+      if(vertices[adjVertice].sccID == v->sccID)
+        sccJumps[v->sccID] = std::max(sccJumps[v->sccID], sccJumps[vertices[adjVertice].sccID]);
+      else
+        sccJumps[v->sccID] = std::max(sccJumps[v->sccID], sccJumps[vertices[adjVertice].sccID] +1);
+      
+      maxJumps = std::max(maxJumps, sccJumps[v->sccID]);
+    }
+  }
+  return maxJumps;
 }
 
 
@@ -113,18 +133,26 @@ int main(){
   }
 
   // First DFS
-  std::stack<vertice*> orderedByFinishTime = DFS(graph, vertices, stack);
+  std::stack<vertice*> orderedByDescendingFinishTime = DFS(graph, vertices, stack);
 
+  std::stack<vertice*> copy = orderedByDescendingFinishTime;
   // Reset vertices color to white
-  for(unsigned i = 1; i <= V; i++) 
+  for(unsigned int i = 1; i <= V; i++) 
     vertices[i].color = WHITE;
   
   // Second DFS
-  calculateSCCs(transpostGraph, vertices, orderedByFinishTime);
+  int numSCC = calculateSCCs(transpostGraph, vertices, orderedByDescendingFinishTime);
 
-  for(vertice v : vertices){
-    std::cout << v.value << ' ' << v.sccID << '\n';
+  std::stack<vertice*> orderedByIncrislyFinishTime;
+  while(!copy.empty()){
+    vertice* v = copy.top();
+    orderedByIncrislyFinishTime.push(v);
+    copy.pop();
   }
+
+  int maxJumps = calculateMaxJumps(graph, vertices, orderedByIncrislyFinishTime, numSCC);
+
+  std::cout << maxJumps << '\n';
 
   return 0;
 }
